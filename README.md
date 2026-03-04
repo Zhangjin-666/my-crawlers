@@ -3,122 +3,47 @@ Crawlers for my daily life
 
 ## Setup
 
-### macOS / Linux (General)
+1. (Linux/macOS) create & activate a virtualenv:
+   ```bash
+   python3 -m venv venv && source venv/bin/activate
+   ```
 
-1. Create a virtual environment:
-```bash
-python3 -m venv venv
-```
+2. install Python requirements and Playwright browsers:
+   ```bash
+   pip install -r requirements.txt
+   playwright install
+   ```
 
-2. Activate the virtual environment:
-```bash
-source venv/bin/activate
-```
+3. *Ubuntu 22 LTS only*: install system packages first:
+   ```bash
+   sudo apt update && sudo apt install -y python3 python3-pip python3-venv \
+       libgconf-2-4 libnss3 libxss1 libappindicator1 libindicator7 libgbm1 \
+       fonts-liberation xdg-utils
+   ```
 
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-playwright install
-```
+That’s it—the environment is ready for crawling.
 
-### Ubuntu 22 LTS
+### Troubleshooting
 
-#### System Prerequisites
-
-First, install Python3 and required system packages:
-
-```bash
-sudo apt update
-sudo apt install -y python3 python3-pip python3-venv
-```
-
-For Playwright to work properly, install additional system dependencies:
-
-```bash
-sudo apt install -y libgconf-2-4 libnss3 libxss1 libappindicator1 libindicator7 libgbm1 libxss1 fonts-liberation xdg-utils
-```
-
-#### Project Setup
-
-1. Clone the repository and navigate to the project:
-```bash
-cd my-crawlers
-```
-
-2. Create a virtual environment:
-```bash
-python3 -m venv venv
-```
-
-3. Activate the virtual environment:
-```bash
-source venv/bin/activate
-```
-
-4. Upgrade pip:
-```bash
-pip install --upgrade pip
-```
-
-5. Install Python dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-6. Install Playwright browsers:
-```bash
-playwright install
-```
-
-This will download the necessary browser binaries (Chromium, Firefox, WebKit).
-
-#### Running the Crawler on Ubuntu
-
-Once setup is complete, you can run the crawler:
-
-```bash
-source venv/bin/activate
-python main.py --config configs/gundeals_config.json
-```
-
-Or search for specific items:
-```bash
-source venv/bin/activate
-python main.py --config configs/gundeals_config.json --search "Beretta"
-```
-
-#### Troubleshooting on Ubuntu
-
-- **Permission denied errors**: Make sure you're in the correct directory and have read permissions
-- **Playwright headless issues**: Ensure all system dependencies are installed with the commands above
-- **Memory issues**: On low-memory systems, consider running one crawler at a time
+- Permission errors: run from project root with correct permissions
+- Playwright issues: ensure the above system packages are installed
+- Low-memory machines: run one crawler at a time or increase swap
 
 ## Usage
 
-### Quick Shortcuts
-
-**Gun Deals Crawler:**
+Run any crawler by pointing at a JSON configuration and optional filters:
 ```bash
-source venv/bin/activate && python main.py --config configs/gundeals_config.json
+source venv/bin/activate
+python main.py --config <config_file_path> [--output out.json] \
+    [--search "keyword"] [--brand "Brand"]
 ```
 
-**News Crawler:**
+Shortcuts (same command, pre‑selected configs):
 ```bash
-source venv/bin/activate && python main.py --config configs/news_config.json
+python main.py --config configs/gundeals_config.json   # gun.deals
+python main.py --config configs/news_config.json       # news
+python main.py --config configs/price_config.json      # price sites
 ```
-
-**Price Crawler:**
-```bash
-source venv/bin/activate && python main.py --config configs/price_config.json
-```
-
-### General Usage
-
-Run the crawler with a configuration file:
-```bash
-python main.py --config <config_file_path> [--output <output_file_path>] [--search <keyword>]
-```
-
 **Arguments:**
 - `--config` (required): Path to the JSON configuration file
 - `--output` (optional): Path to save the output JSON file. If not specified, results are printed to stdout
@@ -169,6 +94,91 @@ python main.py --config configs/evo_skis_config.json \
 3. Brand filtering is supported via `--brand`.
 
 Results will include a `deal_score` field and are sorted when `--score` is used.
+
+---
+
+## Periodic Tracking Service (Node.js)
+
+A lightweight tracker resides in the `tracker/` directory. It schedules crawls,
+remembers past prices, and notifies you of drops. The service also exposes a
+small HTTP API so local agents can query logs or status.
+
+### Setup
+
+Install Node dependencies and start the service:
+
+```bash
+# on Ubuntu use the system Python; on macOS you can point to the venv
+export PYTHON=/usr/bin/python3   # optional override for deploy
+./start-tracker.sh
+```
+
+You may run this from `cron` or your preferred init system.  The script will
+install npm packages if they are missing.
+
+### Configuration
+
+`tracker/config.json` contains an array of objects specifying what to track:
+
+```json
+[
+  {
+    "name": "Fischer RC4 2025",
+    "crawlerConfig": "configs/evo_skis_config.json",
+    "search": "Fischer RC4 2025",
+    "brand": "Fischer"
+  }
+]
+```
+
+- `name` – friendly identifier
+- `crawlerConfig` – relative path to one of the JSON configurations
+- `search` / `brand` / `category` – parameters forwarded to the Python crawler
+
+Additional keys (thresholds, email addresses, etc.) may be added later.
+
+State is stored in `tracker/state.json` and updated automatically.
+
+### Notifications
+
+Set the following environment variables before starting the tracker:
+
+```bash
+export SMTP_HOST=smtp.example.com
+export SMTP_PORT=587
+export SMTP_USER=...
+export SMTP_PASS=...
+export SMTP_FROM="crawler@example.com"
+export NOTIFY_EMAIL="you@domain.com"
+```
+
+When a price drop is detected, an email is sent to `NOTIFY_EMAIL`.
+
+By default each crawler run has a 2‑minute timeout, so a blocked site won’t hang the
+entire schedule.  Timeout errors appear in the log and the tracker moves to the
+next item automatically.
+
+### Logs & diagnostics
+
+Logs are written to `tracker/logs/tracker.log` in JSON format.  To inspect
+recent entries use the HTTP API:
+
+- `GET http://localhost:3001/status` – current configuration and state
+- `GET http://localhost:3001/logs` – all log lines
+- `GET http://localhost:3001/logs?since=2026-03-04T10:00:00Z` – only entries since
+a timestamp
+
+Your local agent (or an ad-hoc `curl`) can poll these endpoints for useful
+information.
+
+### Cron example
+
+```cron
+# run tracker every hour
+0 * * * * cd /path/to/my-crawlers && ./start-tracker.sh
+```
+
+```json
 
 Search for Beretta M9 and save results:
 ```bash

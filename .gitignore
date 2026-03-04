@@ -15,3 +15,8 @@ ENV/
 .DS_Store
 *.log
 output/
+
+# tracker node artifacts
+tracker/node_modules/
+tracker/logs/
+tracker/state.json

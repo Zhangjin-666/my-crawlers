@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Example Ski",
+    "crawlerConfig": "configs/evo_skis_config.json",
+    "search": "Fischer RC4",
+    "brand": "Fischer"
+  },
+  {
+    "name": "Test Gun",
+    "crawlerConfig": "configs/gundeals_config.json",
+    "search": "Beretta",
+    "brand": "Beretta"
+  }
+]
