@@ -3,10 +3,21 @@ import argparse
 import sys
 from src.crawler.engine import GenericCrawler
 
+def filter_results(results, search_term, search_field="name"):
+    """Filter results by searching for a term in a specific field (case-insensitive)"""
+    if not search_term:
+        return results
+    
+    search_term = search_term.lower()
+    filtered = [item for item in results if search_field in item and item[search_field] and search_term in str(item[search_field]).lower()]
+    return filtered
+
 def main():
     parser = argparse.ArgumentParser(description="Generic Web Crawler CLI")
     parser.add_argument("--config", help="Path to the JSON configuration file", required=True)
     parser.add_argument("--output", help="Path to save the output JSON (optional)")
+    parser.add_argument("--search", help="Search for items by keyword (searches in 'name' field by default)")
+    parser.add_argument("--search-field", default="name", help="Field to search in (default: name)")
 
     args = parser.parse_args()
 
@@ -28,6 +39,12 @@ def main():
     try:
         results = crawler.run()
         print(f"Successfully crawled {len(results)} items.")
+        
+        # Apply search filter if provided
+        if args.search:
+            print(f"Searching for: '{args.search}'")
+            results = filter_results(results, args.search, args.search_field)
+            print(f"Found {len(results)} matching items.")
 
         if args.output:
             with open(args.output, 'w') as f:
