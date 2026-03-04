@@ -146,6 +146,30 @@ python main.py --config configs/gundeals_config.json --search "Beretta M9 9mm ha
 ```
 (This query will internally strip the generic word "handgun" and return Beretta M9 results.)
 
+---
+
+### EVO skis
+
+A new configuration is provided at `configs/evo_skis_config.json` for scraping
+ski deals from the EVO website.  Because EVO’s Cloudflare protection is strict,
+Playwright must be used, and you may need to run the crawler from an IP that’s
+not blocked.
+
+You can search by brand and rank results by a simple “good deal” score:
+
+```bash
+source venv/bin/activate
+python main.py --config configs/evo_skis_config.json \
+    --search "fischer" --brand "Fischer" --score
+```
+
+**Deal metric:**
+1. Higher price with a larger discount ratio produces a higher score.
+2. Newer model years (looks for 2015+ in the product name) add bonus points.
+3. Brand filtering is supported via `--brand`.
+
+Results will include a `deal_score` field and are sorted when `--score` is used.
+
 Search for Beretta M9 and save results:
 ```bash
 source venv/bin/activate

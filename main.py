@@ -34,6 +34,34 @@ def filter_results(results, tokens: list, search_field="name"):
             filtered.append(item)
     return filtered
 
+def compute_deal_score(item: dict) -> float:
+    """Calculate a heuristic score for "good deal" items.
+
+    - high absolute price * discount ratio
+    - recent model year (parsed from name)
+    """
+    price_text = item.get("price", "") or ""
+    # find all dollar amounts
+    amounts = re.findall(r"\$([0-9,]+\.?\d*)", price_text)
+    current = 0.0
+    original = 0.0
+    if amounts:
+        current = float(amounts[-1].replace(',', ''))
+        if len(amounts) >= 2:
+            original = float(amounts[0].replace(',', ''))
+    discount = 0.0
+    if original > 0:
+        discount = (original - current) / original
+    score = current * discount
+    # year bonus
+    year_match = re.search(r"20(1[5-9]|2[0-9])", item.get("name", ""))
+    if year_match:
+        year = int(year_match.group(0))
+        score += (year - 2015)
+    item["deal_score"] = score
+    return score
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generic Web Crawler CLI")
     parser.add_argument("--config", help="Path to the JSON configuration file", required=True)
@@ -41,6 +69,8 @@ def main():
     parser.add_argument("--search", help="Keyword to search on the site (will be sent to search_url template)")
     parser.add_argument("--search-field", default="name", help="Field to further filter results after fetch (default: name)")
     parser.add_argument("--category", help="Fetch a specific category defined in the config (e.g. handgun)")
+    parser.add_argument("--brand", help="Filter results by brand name (case-insensitive)")
+    parser.add_argument("--score", action="store_true", help="Compute and sort results by deal score (good deals first)")
 
     args = parser.parse_args()
 
@@ -74,6 +104,13 @@ def main():
             results = filter_results(results, tokens, args.search_field)
             print(f"{len(results)} items remain after local filtering.")
 
+        # brand filter
+        if args.brand:
+            b = args.brand.lower()
+            print(f"Applying brand filter: '{args.brand}'")
+            results = [r for r in results if r.get('brand') and b in r.get('brand','').lower()]
+            print(f"{len(results)} items remain after brand filtering.")
+
         # fallback: if nothing found and categories exist, try crawling category page
         if args.search and not results and config.get('categories'):
             # pick first category whose key appears in the original search string
@@ -91,6 +128,13 @@ def main():
                 cat_results = filter_results(cat_results, tokens, args.search_field)
                 print(f"{len(cat_results)} items found in category after filtering.")
                 results = cat_results
+
+        # compute deal score and optionally sort
+        if args.score:
+            for item in results:
+                compute_deal_score(item)
+            results.sort(key=lambda r: r.get('deal_score', 0), reverse=True)
+            print("Results sorted by deal score.")
 
         if args.output:
             with open(args.output, 'w') as f:

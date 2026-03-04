@@ -35,10 +35,14 @@ class GenericCrawler:
             context = browser.new_context(user_agent=self.headers["User-Agent"])
             page = context.new_page()
             page.goto(self.url)
-            if self.wait_for_selector:
-                page.wait_for_selector(self.wait_for_selector)
-            else:
-                page.wait_for_load_state("networkidle")
+            try:
+                if self.wait_for_selector:
+                    page.wait_for_selector(self.wait_for_selector)
+                else:
+                    page.wait_for_load_state("networkidle")
+            except Exception:  # timeout or other wait errors
+                # ignore and proceed; content may still be returned (e.g., Cloudflare block page)
+                pass
             content = page.content()
             browser.close()
             return content

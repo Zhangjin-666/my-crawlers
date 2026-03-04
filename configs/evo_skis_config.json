@@ -1,0 +1,16 @@
+{
+    "name": "EVO Skis Crawler",
+    "url": "https://www.evo.com/shop/ski/skis",
+    "search_url": "https://www.evo.com/search?searchterm={query}&t=1",
+    "page_param": "page",
+    "max_pages": 10,
+    "use_playwright": true,
+    "wait_for_selector": ".product-tile",
+    "items_selector": ".product-tile",
+    "fields": {
+        "name": ".product-tile--title",
+        "brand": ".product-tile--brand",
+        "price": ".product-tile--price",
+        "link": ".product-tile--title a"
+    }
+}
