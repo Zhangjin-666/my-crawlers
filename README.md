@@ -139,6 +139,13 @@ source venv/bin/activate
 python main.py --config configs/gundeals_config.json --search "Beretta"
 ```
 
+Search with multiple keywords – the crawler will tokenize and match all terms:
+```bash
+source venv/bin/activate
+python main.py --config configs/gundeals_config.json --search "Beretta M9 9mm handgun"
+```
+(This query will internally strip the generic word "handgun" and return Beretta M9 results.)
+
 Search for Beretta M9 and save results:
 ```bash
 source venv/bin/activate

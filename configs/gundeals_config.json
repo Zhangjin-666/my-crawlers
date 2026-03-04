@@ -1,6 +1,13 @@
 {
     "name": "Gun Deals Crawler",
     "url": "https://gun.deals/",
+    "search_url": "https://gun.deals/search/apachesolr_search/{query}",
+    "page_param": "page",
+    "max_pages": 20,
+    "categories": {
+        "handgun": "https://gun.deals/category/hand-guns",
+        "hand-guns": "https://gun.deals/category/hand-guns"
+    },
     "use_playwright": true,
     "wait_for_selector": ".tile--product",
     "items_selector": ".tile--product",

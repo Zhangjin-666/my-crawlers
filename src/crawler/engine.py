@@ -97,6 +97,64 @@ class GenericCrawler:
 
         return results
 
-    def run(self) -> List[Dict[str, Any]]:
-        html = self.fetch()
-        return self.parse(html)
+    def _fetch_url(self, url: str) -> str:
+        """Helper that fetches a given URL using the appropriate method."""
+        if self.use_playwright:
+            # temporarily override self.url for playwright fetch
+            original = self.url
+            self.url = url
+            try:
+                return self._fetch_with_playwright()
+            finally:
+                self.url = original
+        else:
+            # simple requests get
+            response = requests.get(url, headers=self.headers)
+            response.raise_for_status()
+            return response.text
+
+    def run(self, query: str = None, category: str = None) -> List[Dict[str, Any]]:
+        """Run the crawler, optionally performing a search or loading a specific category.
+
+        - If ``query`` is provided and the configuration contains a ``search_url``
+          template, it will be used to build the request URL.
+        - If ``category`` is provided and the configuration contains a
+          ``categories`` mapping, the corresponding URL will be used.
+        - Pagination is supported when ``page_param`` and ``max_pages`` are
+          defined in the configuration.  The crawler will iterate through pages
+          until reaching ``max_pages`` or until no new items are found.
+        """
+        base_url = self.url
+        # category overrides base URL
+        if category and isinstance(self.config.get("categories"), dict):
+            cat_map = self.config.get("categories")
+            if category in cat_map:
+                base_url = cat_map[category]
+        # search query overrides url if template available
+        if query and self.config.get("search_url"):
+            # encode query for URL
+            from urllib.parse import quote
+
+            tmpl = self.config["search_url"]
+            # use percent-encoding for spaces (%20) which matches the site expectations
+            base_url = tmpl.format(query=quote(query))
+
+        results: List[Dict[str, Any]] = []
+        page_param = self.config.get("page_param")
+        max_pages = int(self.config.get("max_pages", 1))
+
+        if page_param and max_pages > 1:
+            for page in range(max_pages):
+                url = base_url
+                # append pagination parameter
+                sep = "?" if "?" not in url else "&"
+                url = f"{url}{sep}{page_param}={page}"
+                html = self._fetch_url(url)
+                items = self.parse(html)
+                if not items:
+                    break
+                results.extend(items)
+            return results
+        else:
+            html = self._fetch_url(base_url)
+            return self.parse(html)
