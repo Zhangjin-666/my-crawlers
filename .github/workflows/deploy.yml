@@ -4,20 +4,42 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      VM_HOST: ${{ vars.VM_HOST }}
+      VM_USERNAME: ${{ vars.VM_USERNAME }}
+      VM_PORT: ${{ vars.VM_PORT }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH key
+        env:
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$VM_SSH_KEY"
+          test -n "$VM_HOST"
+          test -n "$VM_USERNAME"
+          VM_PORT="${VM_PORT:-22}"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VM_SSH_KEY" | tr -d '\r' > ~/.ssh/vm_deploy_key
+          chmod 600 ~/.ssh/vm_deploy_key
+          ssh-keyscan -p "$VM_PORT" -H "$VM_HOST" >> ~/.ssh/known_hosts
 
       - name: Deploy to VM via SSH
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USERNAME }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            cd /home/azureuser/my-crawlers
-            bash deploy.sh
+        run: |
+          set -euo pipefail
+          VM_PORT="${VM_PORT:-22}"
+          ssh -i ~/.ssh/vm_deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -p "$VM_PORT" "$VM_USERNAME@$VM_HOST" \
+            'set -euo pipefail; cd /home/azureuser/my-crawlers; bash deploy.sh'
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/vm_deploy_key

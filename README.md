@@ -206,10 +206,25 @@ This repository includes a GitHub Action to automate deployments to an Azure Vir
 
 ### GitHub Secrets
 
-To enable automatic deployments, you must configure the following secrets in your GitHub repository:
+To enable automatic deployments, configure:
 
-- `VM_HOST`: The IP address or hostname of your Azure VM.
-- `VM_USERNAME`: The SSH username (e.g., `azureuser`).
-- `VM_SSH_KEY`: Your private SSH key.
+- `VM_SSH_KEY`: Content of `my-linux-pw.pem` (including `-----BEGIN ...` / `-----END ...` lines).
 
-Once configured, any push to the `main` branch will trigger a deployment. The deployment script (`deploy.sh`) will pull the latest code, update dependencies, and restart the `my-crawlers.service` systemd service.
+The workflow does **not** store the key in `deploy.yml`. It loads the key from
+GitHub Secrets at runtime, writes it to a temporary file in the runner, and
+deletes it after deployment.
+Use a dedicated CI deploy key without interactive passphrase prompts.
+
+### GitHub Variables
+
+- `VM_HOST`: Azure VM public IP or hostname (for your current setup: `20.83.237.230`)
+- `VM_USERNAME`: SSH username (for your current setup: `azureuser`)
+- `VM_PORT` (optional): SSH port (`22` if omitted)
+
+SSH command for manual verification:
+
+```bash
+ssh -i my-linux-pw.pem azureuser@20.83.237.230
+```
+
+Once configured, any push to `main` (or manual run from Actions tab) triggers deployment. The deployment script (`deploy.sh`) pulls latest code, updates dependencies, and restarts `my-crawlers.service`.
