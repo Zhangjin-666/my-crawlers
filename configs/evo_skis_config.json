@@ -1,16 +1,32 @@
 {
     "name": "EVO Skis Crawler",
     "url": "https://www.evo.com/shop/ski/skis",
-    "search_url": "https://www.evo.com/search?searchterm={query}&t=1",
+    "categories": {
+        "ski": "https://www.evo.com/shop/ski/skis",
+        "skis": "https://www.evo.com/shop/ski/skis",
+        "backcountry": "https://www.evo.com/shop/ski/backcountry",
+        "snowboard": "https://www.evo.com/shop/snowboard",
+        "snowboards": "https://www.evo.com/shop/snowboard",
+        "blizzard": "https://www.evo.com/shop/ski/skis/blizzard",
+        "fischer": "https://www.evo.com/shop/ski/skis/fischer"
+    },
     "page_param": "page",
     "max_pages": 10,
     "use_playwright": true,
-    "wait_for_selector": ".product-tile",
-    "items_selector": ".product-tile",
+    "wait_for_selector": "a[href^='/skis/'], a[href^='/snowboards/']",
+    "items_selector": "a[href^='/skis/'], a[href^='/snowboards/']",
     "fields": {
-        "name": ".product-tile--title",
-        "brand": ".product-tile--brand",
-        "price": ".product-tile--price",
-        "link": ".product-tile--title a"
+        "name": {
+            "regex": "^(.*?)\\s+\\$"
+        },
+        "brand": {
+            "regex": "^([A-Za-z0-9'\\.\\-]+)"
+        },
+        "price": {
+            "regex": "(\\$[0-9,]+(?:\\.\\d{2})?(?:\\s+\\$[0-9,]+(?:\\.\\d{2})?)?)"
+        },
+        "link": {
+            "attribute": "href"
+        }
     }
 }

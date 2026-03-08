@@ -88,6 +88,26 @@ python main.py --config configs/evo_skis_config.json \
     --search "fischer" --brand "Fischer" --score
 ```
 
+Brand/model shortcut CLI:
+
+```bash
+source venv/bin/activate
+python ski_search.py --brand "Blizzard" --model "Zero 105" \
+  --output output/evo_latest.json
+```
+
+This wrapper auto-selects a category (for example `blizzard`, `backcountry`, or `ski`)
+and calls `main.py` for you.
+
+Interactive CLI:
+
+```bash
+source venv/bin/activate
+python ski_search_interactive.py
+```
+
+Then follow the prompts for brand/model/category/output.
+
 **Deal metric:**
 1. Higher price with a larger discount ratio produces a higher score.
 2. Newer model years (looks for 2015+ in the product name) add bonus points.
@@ -178,9 +198,6 @@ information.
 0 * * * * cd /path/to/my-crawlers && ./start-tracker.sh
 ```
 
-```json
-
-Search for Beretta M9 and save results:
 ```bash
 source venv/bin/activate
 python main.py --config configs/gundeals_config.json --search "Beretta M9" --output beretta_m9_deals.json
@@ -189,6 +206,15 @@ python main.py --config configs/gundeals_config.json --search "Beretta M9" --out
 ## Configuration
 
 Each crawler has a corresponding JSON configuration file in the `configs/` directory. Customize the URL and extraction rules in these files to suit your needs.
+
+## Unit Tests
+
+Run all Python unit tests:
+
+```bash
+source venv/bin/activate
+python -m unittest discover -s tests -p 'test_*.py' -v
+```
 
 ## Deployment to Azure VM
 

@@ -2,8 +2,25 @@ import json
 import argparse
 import sys
 import re
-import urllib.parse
+import os
 from src.crawler.engine import GenericCrawler
+
+def normalize_token(token: str) -> str:
+    token = token.strip().lower()
+    if not token:
+        return ""
+    # Single-letter alpha tokens (e.g. "g") are usually too noisy.
+    if len(token) == 1 and token.isalpha():
+        return ""
+    # Product years are often missing from listing titles; do not hard-require them.
+    if re.fullmatch(r"(19|20)\d{2}", token):
+        return ""
+    # Very small stemming to improve matching (e.g. skis -> ski).
+    if len(token) > 3 and token.endswith("ies"):
+        token = token[:-3] + "y"
+    elif len(token) > 3 and token.endswith("s"):
+        token = token[:-1]
+    return token
 
 def tokenize_search(search_term: str, categories: dict | None = None) -> list:
     """Convert a raw search string into a set of tokens, optionally stripping
@@ -13,10 +30,22 @@ def tokenize_search(search_term: str, categories: dict | None = None) -> list:
     """
     if not search_term:
         return []
-    tokens = [tok for tok in re.findall(r"\w+", search_term.lower()) if tok]
+    category_tokens = set()
     if categories:
-        # remove tokens that exactly match any category key
-        tokens = [t for t in tokens if t not in categories.keys()]
+        for key in categories.keys():
+            for part in re.findall(r"\w+", str(key).lower()):
+                normalized = normalize_token(part)
+                if normalized:
+                    category_tokens.add(normalized)
+
+    tokens = []
+    seen = set()
+    for tok in re.findall(r"\w+", search_term.lower()):
+        normalized = normalize_token(tok)
+        if not normalized or normalized in category_tokens or normalized in seen:
+            continue
+        seen.add(normalized)
+        tokens.append(normalized)
     return tokens
 
 
@@ -120,22 +149,39 @@ def main():
             results = [r for r in results if r.get('brand') and b in r.get('brand','').lower()]
             log(f"{len(results)} items remain after brand filtering.")
 
-        # fallback: if nothing found and categories exist, try crawling category page
+        # fallback: if no post-filter matches and categories exist, try a category page
         if args.search and not results and config.get('categories'):
-            # pick first category whose key appears in the original search string
             cat_choice = None
-            lower = args.search.lower()
-            for key in config['categories'].keys():
-                if key in lower:
-                    cat_choice = key
-                    break
+            search_tokens = {normalize_token(t) for t in re.findall(r"\w+", args.search.lower())}
+            search_tokens.discard("")
+            category_keys = list(config['categories'].keys())
+
+            # Prefer explicit brand category first (most specific signal).
+            if not cat_choice and args.brand:
+                b = args.brand.lower().strip()
+                for key in category_keys:
+                    kl = str(key).lower()
+                    if kl == b or kl in b or b in kl:
+                        cat_choice = key
+                        break
+
+            # Then prefer exact token matches, longest key first (e.g. backcountry over ski).
+            if not cat_choice:
+                ranked_keys = sorted(category_keys, key=lambda k: len(str(k)), reverse=True)
+                for key in ranked_keys:
+                    normalized_key = normalize_token(str(key))
+                    if normalized_key and normalized_key in search_tokens:
+                        cat_choice = key
+                        break
             if cat_choice:
-                log(f"No matches found; falling back to category '{cat_choice}' and re-filtering without the category term.")
+                log(f"No matches found; falling back to category '{cat_choice}'.")
                 cat_results = crawler.run(query=None, category=cat_choice)
-                # recompute tokens excluding the category word
-                tokens = tokenize_search(args.search, {cat_choice: True})
-                cat_results = filter_results(cat_results, tokens, args.search_field)
-                log(f"{len(cat_results)} items found in category after filtering.")
+                cat_tokens = tokenize_search(args.search, {cat_choice: True})
+                cat_results = filter_results(cat_results, cat_tokens, args.search_field)
+                if args.brand:
+                    b = args.brand.lower()
+                    cat_results = [r for r in cat_results if r.get('brand') and b in r.get('brand', '').lower()]
+                log(f"{len(cat_results)} items found from category fallback.")
                 results = cat_results
 
         # compute deal score and optionally sort
@@ -146,6 +192,9 @@ def main():
             log("Results sorted by deal score.")
 
         if args.output:
+            output_dir = os.path.dirname(args.output)
+            if output_dir:
+                os.makedirs(output_dir, exist_ok=True)
             with open(args.output, 'w') as f:
                 json.dump(results, f, indent=4)
             log(f"Results saved to {args.output}")
