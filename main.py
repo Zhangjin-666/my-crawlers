@@ -71,45 +71,54 @@ def main():
     parser.add_argument("--category", help="Fetch a specific category defined in the config (e.g. handgun)")
     parser.add_argument("--brand", help="Filter results by brand name (case-insensitive)")
     parser.add_argument("--score", action="store_true", help="Compute and sort results by deal score (good deals first)")
+    parser.add_argument(
+        "--json-only",
+        action="store_true",
+        help="Keep stdout as JSON-only output and write progress logs to stderr",
+    )
 
     args = parser.parse_args()
+
+    def log(message: str):
+        stream = sys.stderr if args.json_only else sys.stdout
+        print(message, file=stream)
 
     try:
         with open(args.config, 'r') as f:
             config = json.load(f)
     except FileNotFoundError:
-        print(f"Error: Config file '{args.config}' not found.")
+        print(f"Error: Config file '{args.config}' not found.", file=sys.stderr)
         sys.exit(1)
     except json.JSONDecodeError:
-        print(f"Error: Failed to decode JSON from '{args.config}'.")
+        print(f"Error: Failed to decode JSON from '{args.config}'.", file=sys.stderr)
         sys.exit(1)
 
     crawler = GenericCrawler(config)
 
     # compute crawl parameters and delegate to the engine
-    print(f"Starting crawler: {config.get('name', 'Unnamed Crawler')}...")
+    log(f"Starting crawler: {config.get('name', 'Unnamed Crawler')}...")
     if args.category:
-        print(f"Fetching category '{args.category}'")
+        log(f"Fetching category '{args.category}'")
     if args.search:
-        print(f"Searching remote with keyword: '{args.search}'")
+        log(f"Searching remote with keyword: '{args.search}'")
 
     try:
         results = crawler.run(query=args.search, category=args.category)
-        print(f"Successfully crawled {len(results)} items.")
+        log(f"Successfully crawled {len(results)} items.")
 
         # local filtering tokens
         if args.search:
             tokens = tokenize_search(args.search, config.get('categories'))
-            print(f"Applying local filter for tokens: {tokens} (field: {args.search_field})")
+            log(f"Applying local filter for tokens: {tokens} (field: {args.search_field})")
             results = filter_results(results, tokens, args.search_field)
-            print(f"{len(results)} items remain after local filtering.")
+            log(f"{len(results)} items remain after local filtering.")
 
         # brand filter
         if args.brand:
             b = args.brand.lower()
-            print(f"Applying brand filter: '{args.brand}'")
+            log(f"Applying brand filter: '{args.brand}'")
             results = [r for r in results if r.get('brand') and b in r.get('brand','').lower()]
-            print(f"{len(results)} items remain after brand filtering.")
+            log(f"{len(results)} items remain after brand filtering.")
 
         # fallback: if nothing found and categories exist, try crawling category page
         if args.search and not results and config.get('categories'):
@@ -121,12 +130,12 @@ def main():
                     cat_choice = key
                     break
             if cat_choice:
-                print(f"No matches found; falling back to category '{cat_choice}' and re-filtering without the category term.")
+                log(f"No matches found; falling back to category '{cat_choice}' and re-filtering without the category term.")
                 cat_results = crawler.run(query=None, category=cat_choice)
                 # recompute tokens excluding the category word
                 tokens = tokenize_search(args.search, {cat_choice: True})
                 cat_results = filter_results(cat_results, tokens, args.search_field)
-                print(f"{len(cat_results)} items found in category after filtering.")
+                log(f"{len(cat_results)} items found in category after filtering.")
                 results = cat_results
 
         # compute deal score and optionally sort
@@ -134,17 +143,17 @@ def main():
             for item in results:
                 compute_deal_score(item)
             results.sort(key=lambda r: r.get('deal_score', 0), reverse=True)
-            print("Results sorted by deal score.")
+            log("Results sorted by deal score.")
 
         if args.output:
             with open(args.output, 'w') as f:
                 json.dump(results, f, indent=4)
-            print(f"Results saved to {args.output}")
+            log(f"Results saved to {args.output}")
         else:
             print(json.dumps(results, indent=4))
 
     except Exception as e:
-        print(f"An error occurred during crawling: {e}")
+        print(f"An error occurred during crawling: {e}", file=sys.stderr)
         sys.exit(1)
 
 if __name__ == "__main__":

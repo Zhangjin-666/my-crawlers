@@ -32,7 +32,7 @@ function saveState() {
 
 function runCrawler(item) {
   return new Promise((resolve, reject) => {
-    const args = ['main.py', '--config', item.crawlerConfig];
+    const args = ['main.py', '--config', item.crawlerConfig, '--json-only'];
     if (item.search) args.push('--search', item.search);
     if (item.brand) args.push('--brand', item.brand);
     // prefer explicit env override, otherwise default to `python3` on PATH
