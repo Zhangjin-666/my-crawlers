@@ -3,7 +3,7 @@ import argparse
 from unittest.mock import patch, MagicMock
 
 import main
-from main import tokenize_search, compute_deal_score
+from main import tokenize_search, compute_deal_score, brand_matches
 
 
 class TestSearchHelpers(unittest.TestCase):
@@ -64,6 +64,14 @@ class TestSearchHelpers(unittest.TestCase):
         score = compute_deal_score(item)
         self.assertGreater(score, 100.0)
         self.assertAlmostEqual(score, 130.99799986665778)
+
+    def test_brand_matches_falls_back_to_name_when_brand_field_missing(self):
+        item = {
+            "name": "Beretta M9 9mm Pistol",
+            "price": "$499.99",
+        }
+        self.assertTrue(brand_matches(item, "Beretta"))
+        self.assertFalse(brand_matches(item, "Glock"))
 
 
 if __name__ == "__main__":

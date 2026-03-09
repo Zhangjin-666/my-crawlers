@@ -63,6 +63,16 @@ def filter_results(results, tokens: list, search_field="name"):
             filtered.append(item)
     return filtered
 
+
+def brand_matches(item: dict, brand: str) -> bool:
+    brand_lower = brand.lower()
+    explicit_brand = str(item.get("brand", "") or "").lower()
+    if explicit_brand:
+        return brand_lower in explicit_brand
+    # Some configs do not extract a dedicated brand field. Fall back to title text.
+    name_text = str(item.get("name", "") or "").lower()
+    return brand_lower in name_text
+
 def compute_deal_score(item: dict) -> float:
     """Calculate a heuristic score for "good deal" items.
 
@@ -149,9 +159,8 @@ def main():
 
         # brand filter
         if args.brand:
-            b = args.brand.lower()
             log(f"Applying brand filter: '{args.brand}'")
-            results = [r for r in results if r.get('brand') and b in r.get('brand','').lower()]
+            results = [r for r in results if brand_matches(r, args.brand)]
             log(f"{len(results)} items remain after brand filtering.")
 
         # fallback: if no post-filter matches and categories exist, try a category page
@@ -184,8 +193,7 @@ def main():
                 cat_tokens = tokenize_search(args.search, {cat_choice: True})
                 cat_results = filter_results(cat_results, cat_tokens, args.search_field)
                 if args.brand:
-                    b = args.brand.lower()
-                    cat_results = [r for r in cat_results if r.get('brand') and b in r.get('brand', '').lower()]
+                    cat_results = [r for r in cat_results if brand_matches(r, args.brand)]
                 log(f"{len(cat_results)} items found from category fallback.")
                 results = cat_results
 
