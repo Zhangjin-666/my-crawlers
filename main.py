@@ -74,9 +74,8 @@ def compute_deal_score(item: dict) -> float:
         str(item.get("name", "") or ""),
     ]
     price_text = " ".join(part for part in price_sources if part)
-    # Some EVO listings flatten sale/original prices into a single text blob.
-    # Consider every dollar amount we can find, then treat the lowest as current
-    # and the highest as original.
+    # EVO sale listings sometimes flatten sale/original amounts into one text blob.
+    # Use the lowest amount as current and the highest as original.
     amounts = [float(v.replace(',', '')) for v in re.findall(r"\$([0-9,]+\.?\d*)", price_text)]
     current = 0.0
     original = 0.0

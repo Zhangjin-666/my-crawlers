@@ -56,14 +56,14 @@ class TestSearchHelpers(unittest.TestCase):
 
     def test_compute_deal_score_uses_sale_and_original_price_from_flattened_evo_text(self):
         item = {
-            "name": "Salomon QST 94 Skis 20264.39 Reviews$559.96Sale-$699.95",
-            "brand": "Salomon",
-            "price": "$559.96",
-            "link": "https://www.evo.com/skis/salomon-qst-94",
+            "name": "Atomic Backland 102 Skis 20265.01 Review$749.95$599.95Sale",
+            "brand": "Atomic",
+            "price": "$599.95",
+            "link": "https://www.evo.com/skis/atomic-backland-102",
         }
         score = compute_deal_score(item)
         self.assertGreater(score, 100.0)
-        self.assertAlmostEqual(score, 122.99200000000002)
+        self.assertAlmostEqual(score, 130.99799986665778)
 
 
 if __name__ == "__main__":
