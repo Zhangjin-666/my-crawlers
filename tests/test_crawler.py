@@ -83,12 +83,12 @@ class TestGenericCrawler(unittest.TestCase):
             "fields": {
                 "name": {"regex": "^(.*?)\\s+\\$"},
                 "brand": {"regex": "^([A-Za-z0-9'\\.\\-]+)"},
-                "price": {"regex": "(\\$[0-9,]+(?:\\.\\d{2})?(?:\\s+\\$[0-9,]+(?:\\.\\d{2})?)?)"},
+                "price": {"regex": "(\\$[0-9,]+(?:\\.\\d{2})?)(?!.*\\$[0-9,]+(?:\\.\\d{2})?)"},
                 "link": {"attribute": "href"}
             }
         }
         html = """
-        <a href="/skis/blizzard-zero-g-105-skis-2026">Blizzard Zero G 105 Skis 2026 $949.99</a>
+        <a href="/skis/blizzard-zero-g-105-skis-2026">Blizzard Zero G 105 Skis 2026 $949.99 $699.95 Sale</a>
         """
         crawler = GenericCrawler(config)
         results = crawler.parse(html)
@@ -96,7 +96,7 @@ class TestGenericCrawler(unittest.TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["name"], "Blizzard Zero G 105 Skis 2026")
         self.assertEqual(results[0]["brand"], "Blizzard")
-        self.assertEqual(results[0]["price"], "$949.99")
+        self.assertEqual(results[0]["price"], "$699.95")
         self.assertEqual(results[0]["link"], "https://www.evo.com/skis/blizzard-zero-g-105-skis-2026")
 
     @patch('requests.get')

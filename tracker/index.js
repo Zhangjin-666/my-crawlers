@@ -71,6 +71,7 @@ function runCrawler(item) {
     const args = ['main.py', '--config', item.crawlerConfig, '--json-only'];
     if (item.search) args.push('--search', item.search);
     if (item.brand) args.push('--brand', item.brand);
+    if (item.score !== false) args.push('--score');
     // prefer explicit env override, otherwise default to `python3` on PATH
     // this ensures a Linux deployment uses the system interpreter instead of
     // Homebrew's Mac path.  During local macOS debugging the virtualenv is
