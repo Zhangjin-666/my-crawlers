@@ -54,11 +54,14 @@ async function checkAll() {
   logger.info('Scheduled check complete');
 }
 
-// schedule every hour by default
-cron.schedule('0 * * * *', checkAll);
+// schedule crawl — default every 10 minutes, configurable via TRACKER_CRON
+const crawlCron = process.env.TRACKER_CRON || '*/10 * * * *';
+logger.info('Scheduling crawl', { cron: crawlCron });
+cron.schedule(crawlCron, checkAll);
 
 // run GC once a day at 3:00 AM
-cron.schedule('0 3 * * *', () => gcLogs(resultsDir));
+const gcCron = process.env.TRACKER_GC_CRON || '0 3 * * *';
+cron.schedule(gcCron, () => gcLogs(resultsDir));
 
 // HTTP API
 const app = createApp(() => ({ config, configPath: activeConfigPath, state, lastRun: state._lastRun }));
